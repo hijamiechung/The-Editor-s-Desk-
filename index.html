@@ -36,11 +36,13 @@ body::after {
   z-index: 9999;
 }
 
-.screen { position: absolute; inset: 0; display: none; }
-.screen.active { display: block; }
+.screen { position: absolute; inset: 0; display: none !important; }
+.screen.active { display: block !important; }
+#title-screen.active { display: flex !important; }
+#report-screen.active { display: flex !important; }
 
 /* ===== TITLE ===== */
-#title-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+#title-screen { flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
 #title-screen.active { display: flex; }
 
 .title-logo {
@@ -241,7 +243,7 @@ body::after {
 .dlg-opt:disabled { cursor: default; opacity: .85; }
 
 /* --- REPORT --- */
-#report-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 30px 20px; overflow-y: auto; }
+#report-screen { flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 30px 20px; overflow-y: auto; }
 #report-screen.active { display: flex; }
 .r-title { font-family: 'Press Start 2P', monospace; font-size: clamp(13px,2.5vw,20px); color: var(--gold); text-shadow: 3px 3px 0 var(--gold-dim); text-align: center; }
 .r-grade { font-family: 'Press Start 2P', monospace; font-size: clamp(44px,9vw,76px); color: var(--gold); text-shadow: 6px 6px 0 var(--gold-dim), 0 0 40px rgba(240,192,64,.3); }
