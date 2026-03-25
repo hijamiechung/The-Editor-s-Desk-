@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Editor's Desk</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&family=Inconsolata:wght@400;700&display=swap');
+
+  :root {
+    --navy: #0a0e2a;
+    --deep-navy: #060918;
+    --gold: #f0c040;
+    --gold-dim: #a88020;
+    --electric: #4090ff;
+    --electric-dim: #204888;
+    --green: #40e080;
+    --red: #e04040;
+    --text: #d0d8f0;
+    --text-dim: #6878a0;
+    --panel: #0f1535;
+    --panel-border: #1e2a5a;
+    --highlight: #1a2550;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; image-rendering: pixelated; }
+
+  body {
+    background: var(--deep-navy);
+    color: var(--text);
+    font-family: 'Inconsolata', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  #screen {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  /* ===== TITLE SCREEN ===== */
+  #title-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    text-align: center;
+    gap: 24px;
+  }
+
+  .pixel-logo {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 28px;
+    color: var(--gold);
+    text-shadow: 4px 4px 0 var(--gold-dim), 0 0 30px rgba(240,192,64,0.4);
+    line-height: 1.4;
+    animation: flicker 4s infinite;
+  }
+
+  .pixel-logo span {
+    color: var(--electric);
+    text-shadow: 4px 4px 0 var(--electric-dim), 0 0 20px rgba(64,144,255,0.5);
+  }
+
+  @keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.8; }
+    97% { opacity: 1; }
+    98% { opacity: 0.6; }
+  }
+
+  .subtitle {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .pixel-sprite {
+    width: 64px;
+    height: 64px;
+    margin: 10px auto;
+    animation: bob 1.5s ease-in-out infinite;
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .name-input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .pixel-label {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .pixel-input {
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 24px;
+    padding: 10px 16px;
+    width: 100%;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 2px;
+  }
+
+  .pixel-input:focus { border-color: var(--electric); }
+
+  .pixel-btn {
+    background: var(--gold);
+    color: var(--deep-navy);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    border: none;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 4px 4px 0 var(--gold-dim);
+    letter-spacing: 1px;
+  }
+
+  .pixel-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--gold-dim);
+  }
+
+  .pixel-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--gold-dim);
+  }
+
+  .pixel-btn.secondary {
+    background: var(--electric);
+    box-shadow: 4px 4px 0 var(--electric-dim);
+  }
+  .pixel-btn.secondary:hover { box-shadow: 6px 6px 0 var(--electric-dim); }
+  .pixel-btn.secondary:active { box-shadow: 2px 2px 0 var(--electric-dim); }
+
+  .pixel-btn.danger {
+    background: var(--red);
+    box-shadow: 4px 4px 0 #802020;
+  }
+
+  /* ===== HUD ===== */
+  #hud {
+    display: none;
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    display: none;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .hud-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+  }
+
+  .hud-label {
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .hud-val { color: var(--gold); }
+  .hud-time { color: var(--electric); }
+
+  .rep-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rep-bar {
+    width: 100px;
+    height: 12px;
+    background: var(--deep-navy);
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+  }
+
+  .rep-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.5s;
+  }
+
+  .rep-bar-fill.low { background: var(--red); }
+  .rep-bar-fill.med { background: var(--gold); }
+
+  /* ===== GAME AREA ===== */
+  #game-area {
+    display: none;
+  }
+
+  .phase-banner {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--electric);
+    letter-spacing: 2px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--panel-border);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  /* ===== OFFICE SCENE ===== */
+  .office-scene {
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .scene-sprite { flex-shrink: 0; }
+
+  .dialogue-box {
+    flex: 1;
+    background: var(--deep-navy);
+    border: 2px solid var(--panel-border);
+    padding: 14px;
+  }
+
+  .dialogue-speaker {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .dialogue-text {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  /* ===== DOCUMENT PANEL ===== */
+  .document-panel {
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    margin-bottom: 16px;
+  }
+
+  .doc-header {
+    background: var(--highlight);
+    padding: 10px 16px;
+    border-bottom: 2px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .doc-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .doc-type-badge {
+    font-family: 'VT323', monospace;
+    font-size: 14px;
+    padding: 2px 8px;
+    background: var(--electric-dim);
+    color: var(--electric);
+    letter-spacing: 1px;
+  }
+
+  .doc-body {
+    padding: 20px;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text);
+  }
+
+  .biased {
+    background: rgba(240,192,64,0.15);
+    border-bottom: 2px solid var(--gold);
+    cursor: pointer;
+    padding: 0 2px;
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .biased:hover {
+    background: rgba(240,192,64,0.35);
+  }
+
+  .biased.revealed {
+    background: rgba(64,144,255,0.15);
+    border-bottom-color: var(--electric);
+    cursor: default;
+  }
+
+  .biased.correct {
+    background: rgba(64,224,128,0.15);
+    border-bottom-color: var(--green);
+  }
+
+  .biased.wrong {
+    background: rgba(224,64,64,0.15);
+    border-bottom-color: var(--red);
+  }
+
+  /* ===== CHOICE PANEL ===== */
+  .choice-panel {
+    background: var(--deep-navy);
+    border: 2px solid var(--panel-border);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .choice-prompt {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--gold);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .choice-btn {
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    padding: 10px 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .choice-btn:hover:not(:disabled) {
+    background: var(--highlight);
+    border-color: var(--electric);
+    color: var(--electric);
+  }
+
+  .choice-btn.correct-ans {
+    background: rgba(64,224,128,0.1);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .choice-btn.wrong-ans {
+    background: rgba(224,64,64,0.1);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .choice-btn:disabled { cursor: default; opacity: 0.8; }
+
+  /* ===== FEEDBACK ===== */
+  .feedback-box {
+    border: 2px solid;
+    padding: 14px;
+    margin-bottom: 12px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    line-height: 1.5;
+  }
+
+  .feedback-box.correct {
+    border-color: var(--green);
+    background: rgba(64,224,128,0.08);
+    color: var(--green);
+  }
+
+  .feedback-box.wrong {
+    border-color: var(--red);
+    background: rgba(224,64,64,0.08);
+    color: var(--red);
+  }
+
+  .feedback-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .bias-type-tag {
+    display: inline-block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: 3px 8px;
+    background: var(--electric-dim);
+    color: var(--electric);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== STATS SIDEBAR ===== */
+  .game-layout {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 16px;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stat-panel {
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    padding: 12px;
+  }
+
+  .stat-panel-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+  }
+
+  .stat-name { color: var(--text-dim); }
+  .stat-val { color: var(--gold); }
+
+  .sp-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--deep-navy);
+    border: 1px solid var(--panel-border);
+    margin-top: 2px;
+    overflow: hidden;
+  }
+
+  .sp-bar-fill {
+    height: 100%;
+    background: var(--electric);
+    transition: width 0.5s;
+  }
+
+  /* ===== EVENT PANEL ===== */
+  .event-panel {
+    background: var(--panel);
+    border: 2px solid var(--electric-dim);
+    padding: 16px;
+    margin-bottom: 16px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .event-header {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--electric);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  /* ===== REPORT SCREEN ===== */
+  #report-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 0;
+  }
+
+  .report-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: var(--gold);
+    text-align: center;
+    text-shadow: 3px 3px 0 var(--gold-dim);
+    letter-spacing: 1px;
+  }
+
+  .report-card {
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .report-section-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .report-stat {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--panel-border);
+  }
+
+  .report-stat:last-child { border-bottom: none; }
+
+  .grade-display {
+    text-align: center;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 48px;
+    color: var(--gold);
+    text-shadow: 6px 6px 0 var(--gold-dim);
+    padding: 20px;
+  }
+
+  /* ===== TRANSITIONS ===== */
+  .fade-in { animation: fadeInAnim 0.4s ease; }
+
+  @keyframes fadeInAnim {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .hidden { display: none !important; }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* Notification */
+  .notif {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--panel);
+    border: 2px solid var(--gold);
+    padding: 12px 16px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--gold);
+    z-index: 1000;
+    animation: notifIn 0.3s ease;
+    max-width: 280px;
+  }
+
+  @keyframes notifIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--deep-navy); }
+  ::-webkit-scrollbar-thumb { background: var(--panel-border); }
+
+  @media (max-width: 600px) {
+    .game-layout { grid-template-columns: 1fr; }
+    .sidebar { flex-direction: row; flex-wrap: wrap; }
+    .stat-panel { flex: 1; min-width: 140px; }
+    .pixel-logo { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div id="screen">
+
+  <!-- TITLE SCREEN -->
+  <div id="title-screen">
+    <div class="pixel-logo">THE<br><span>EDITOR'S</span><br>DESK</div>
+
+    <!-- Pixel character SVG -->
+    <svg class="pixel-sprite" viewBox="0 0 16 20" xmlns="http://www.w3.org/2000/svg">
+      <!-- Body -->
+      <rect x="5" y="8" width="6" height="7" fill="#4090ff"/>
+      <!-- Head -->
+      <rect x="4" y="2" width="8" height="7" fill="#f0c040"/>
+      <!-- Eyes -->
+      <rect x="6" y="5" width="1" height="1" fill="#0a0e2a"/>
+      <rect x="9" y="5" width="1" height="1" fill="#0a0e2a"/>
+      <!-- Mouth -->
+      <rect x="6" y="7" width="4" height="1" fill="#0a0e2a"/>
+      <!-- Hair -->
+      <rect x="4" y="2" width="8" height="2" fill="#0a0e2a"/>
+      <!-- Legs -->
+      <rect x="5" y="15" width="2" height="3" fill="#1e2a5a"/>
+      <rect x="9" y="15" width="2" height="3" fill="#1e2a5a"/>
+      <!-- Arms -->
+      <rect x="2" y="9" width="3" height="2" fill="#f0c040"/>
+      <rect x="11" y="9" width="3" height="2" fill="#f0c040"/>
+      <!-- Collar -->
+      <rect x="7" y="8" width="2" height="2" fill="#d0d8f0"/>
+    </svg>
+
+    <div class="subtitle">A MEDIA BIAS SIMULATION</div>
+
+    <div class="name-input-area">
+      <div class="pixel-label">ENTER YOUR NAME:</div>
+      <input type="text" id="name-input" class="pixel-input" placeholder="ALEX" maxlength="12">
+      <button class="pixel-btn" onclick="startGame()">▶ START DAY 1</button>
+    </div>
+
+    <div style="font-family:'VT323',monospace;font-size:16px;color:var(--text-dim);max-width:400px;text-align:center;line-height:1.6;">
+      You've just landed a junior editor role at GlobalTrade Corp's PR team.<br>
+      Your job: review documents before they go public.<br>
+      Spot the bias. Fix the language. Protect the brand.
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-label">EDITOR:</span>
+      <span class="hud-val" id="hud-name">—</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">TIME:</span>
+      <span class="hud-time" id="hud-time">09:00</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">SCORE:</span>
+      <span class="hud-val" id="hud-score">0</span>
+    </div>
+    <div class="hud-item rep-bar-wrap">
+      <span class="hud-label">REP:</span>
+      <div class="rep-bar"><div class="rep-bar-fill" id="rep-bar" style="width:80%"></div></div>
+      <span class="hud-val" id="rep-val">80</span>
+    </div>
+  </div>
+
+  <!-- GAME AREA -->
+  <div id="game-area">
+    <div id="phase-banner" class="phase-banner">◆ MORNING SHIFT — 09:00</div>
+
+    <div class="game-layout">
+      <div id="main-column">
+        <!-- Content injected by JS -->
+      </div>
+      <div class="sidebar">
+        <div class="stat-panel">
+          <div class="stat-panel-title">SKILL POINTS</div>
+          <div class="stat-row">
+            <span class="stat-name">BIAS DET.</span>
+            <span class="stat-val" id="sp-bias">0</span>
+          </div>
+          <div class="sp-bar"><div class="sp-bar-fill" id="sp-bias-bar" style="width:0%"></div></div>
+          <div style="margin-top:8px"></div>
+          <div class="stat-row">
+            <span class="stat-name">CULTURAL</span>
+            <span class="stat-val" id="sp-cultural">0</span>
+          </div>
+          <div class="sp-bar"><div class="sp-bar-fill" id="sp-cultural-bar" style="width:0%"></div></div>
+          <div style="margin-top:8px"></div>
+          <div class="stat-row">
+            <span class="stat-name">INCLUSIVE</span>
+            <span class="stat-val" id="sp-inclusive">0</span>
+          </div>
+          <div class="sp-bar"><div class="sp-bar-fill" id="sp-inclusive-bar" style="width:0%"></div></div>
+          <div style="margin-top:8px"></div>
+          <div class="stat-row">
+            <span class="stat-name">POLICY</span>
+            <span class="stat-val" id="sp-policy">0</span>
+          </div>
+          <div class="sp-bar"><div class="sp-bar-fill" id="sp-policy-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-panel">
+          <div class="stat-panel-title">TODAY</div>
+          <div class="stat-row">
+            <span class="stat-name">DOCS</span>
+            <span class="stat-val" id="docs-done">0/3</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">CORRECT</span>
+            <span class="stat-val" id="correct-count" style="color:var(--green)">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">MISSED</span>
+            <span class="stat-val" id="wrong-count" style="color:var(--red)">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT SCREEN -->
+  <div id="report-screen">
+    <div class="report-title">DAY 1 COMPLETE</div>
+    <div class="grade-display" id="report-grade">B</div>
+    <div class="report-card">
+      <div class="report-section-title">PERFORMANCE SUMMARY</div>
+      <div class="report-stat"><span>FINAL SCORE</span><span id="r-score" style="color:var(--gold)">0</span></div>
+      <div class="report-stat"><span>REPUTATION</span><span id="r-rep" style="color:var(--green)">80</span></div>
+      <div class="report-stat"><span>CORRECT EDITS</span><span id="r-correct" style="color:var(--green)">0</span></div>
+      <div class="report-stat"><span>MISSED EDITS</span><span id="r-wrong" style="color:var(--red)">0</span></div>
+    </div>
+    <div class="report-card">
+      <div class="report-section-title">SKILLS GAINED</div>
+      <div class="report-stat"><span>BIAS DETECTION</span><span id="r-sp-bias" style="color:var(--electric)">+0</span></div>
+      <div class="report-stat"><span>CULTURAL LITERACY</span><span id="r-sp-cultural" style="color:var(--electric)">+0</span></div>
+      <div class="report-stat"><span>INCLUSIVE WRITING</span><span id="r-sp-inclusive" style="color:var(--electric)">+0</span></div>
+      <div class="report-stat"><span>POLICY WRITING</span><span id="r-sp-policy" style="color:var(--electric)">+0</span></div>
+    </div>
+    <div id="r-feedback" style="font-family:'VT323',monospace;font-size:20px;color:var(--text);text-align:center;max-width:500px;line-height:1.6;"></div>
+    <button class="pixel-btn" onclick="location.reload()">▶ PLAY AGAIN</button>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// GAME DATA
+// ============================================================
+
+const DOCS = [
+  {
+    id: 'doc1',
+    title: 'APAC EXPANSION PRESS RELEASE',
+    type: 'PRESS RELEASE',
+    phase: 'morning',
+    intro: 'Review this press release for the Singapore office launch before it goes to media outlets.',
+    body: [
+      { text: "GlobalTrade Corp is proud to announce the expansion of its operations into the Asia-Pacific region, with a new regional headquarters in Singapore. " },
+      { text: "The move reflects our commitment to ", plain: true },
+      { id: 'b1', text: "tapping into the booming Asian market", bias: "othering", choices: [
+        { text: "tapping into the booming Asian market", correct: false },
+        { text: "expanding into high-growth Asia-Pacific economies", correct: true },
+        { text: "entering overseas territory", correct: false }
+      ], correctFeedback: "✓ 'Booming Asian market' frames the region as monolithic. Specific, economic language is more professional.", wrongFeedback: "✗ This phrasing treats an entire continent as a single market. Specificity matters.", biasLabel: "OTHERING / ESSENTIALISM" },
+      { text: " while bringing our Western expertise to local businesses. " },
+      { id: 'b2', text: "Our new Singapore team will help local companies modernize their practices", bias: "cultural", choices: [
+        { text: "Our new Singapore team will help local companies modernize their practices", correct: false },
+        { text: "Our Singapore office will collaborate with regional partners to support growth initiatives", correct: true },
+        { text: "We'll train Singapore staff in GlobalTrade methods", correct: false }
+      ], correctFeedback: "✓ 'Modernize' implies local practices are behind. Collaboration framing respects local expertise.", wrongFeedback: "✗ 'Modernize their practices' implies local businesses are outdated—a condescending framing.", biasLabel: "CULTURAL DEFICIT FRAMING" },
+      { text: " and drive revenue growth across the region. The office will be led by our director, Sarah Chen, " },
+      { id: 'b3', text: "who despite being local brings an impressive international perspective", bias: "othering", choices: [
+        { text: "who despite being local brings an impressive international perspective", correct: false },
+        { text: "who brings extensive international experience", correct: true },
+        { text: "a local hire with foreign credentials", correct: false }
+      ], correctFeedback: "✓ 'Despite being local' implies her origin is a limitation to overcome. Drop it entirely.", wrongFeedback: "✗ 'Despite being local' treats her regional identity as a disadvantage. This undermines the hire.", biasLabel: "OTHERING" },
+      { text: ". GlobalTrade Corp looks forward to a productive partnership." }
+    ],
+    sp: 'bias_detection',
+    spGain: 3,
+    repGain: 10,
+    repLoss: 8
+  },
+  {
+    id: 'doc2',
+    title: 'SYDNEY SWEET JEANS — AD COPY',
+    type: 'ADVERTISEMENT',
+    phase: 'morning',
+    intro: 'Marketing submitted this ad copy for approval. Review it for problematic language before we forward to the client.',
+    body: [
+      { text: "Introducing Sydney Sweet Jeans — designed for the " },
+      { id: 'b4', text: "girl who wants to show off her figure", bias: "appearance", choices: [
+        { text: "girl who wants to show off her figure", correct: false },
+        { text: "woman who wants to feel confident in what she wears", correct: true },
+        { text: "lady who cares about fashion", correct: false }
+      ], correctFeedback: "✓ Confidence framing respects the person. 'Show off her figure' reduces her to a body.", wrongFeedback: "✗ 'Show off her figure' reduces identity to physical appearance and uses infantilizing language.", biasLabel: "APPEARANCE FRAMING + INFANTILIZING" },
+      { text: ". Our stretch denim flatters " },
+      { id: 'b5', text: "even curvier body types", bias: "body", choices: [
+        { text: "even curvier body types", correct: false },
+        { text: "every body", correct: true },
+        { text: "all shapes and sizes", correct: false }
+      ], correctFeedback: "✓ 'Even curvier' implies fuller bodies are the exception that needs accommodating. 'Every body' is cleaner.", wrongFeedback: "✗ 'Even curvier' positions larger bodies as an afterthought requiring special mention.", biasLabel: "BODY SHAMING / OTHERING" },
+      { text: ". Available in sizes 0–16. Perfect for " },
+      { id: 'b6', text: "girls' night out or brunch with the ladies", bias: "gender", choices: [
+        { text: "girls' night out or brunch with the ladies", correct: false },
+        { text: "any occasion, day or night", correct: true },
+        { text: "evenings out or weekend plans", correct: false }
+      ], correctFeedback: "✓ Occasion-based framing is more versatile. Gendered social settings limit the appeal.", wrongFeedback: "✗ Defaulting to stereotyped social scenarios reduces the target audience and the product's range.", biasLabel: "GENDER ASSUMPTION" },
+      { text: ". Sydney Sweet — style that fits." }
+    ],
+    sp: 'inclusive_writing',
+    spGain: 3,
+    repGain: 10,
+    repLoss: 8
+  },
+  {
+    id: 'doc3',
+    title: 'Q3 PERFORMANCE MEMO — HR',
+    type: 'INTERNAL MEMO',
+    phase: 'afternoon',
+    intro: 'HR circulated this internal memo ahead of reviews. Check it before it reaches all staff.',
+    body: [
+      { text: "TO: All Department Heads\nRE: Q3 Performance Review Guidelines\n\nAs we approach review season, please note the following evaluation criteria. We ask that all managers assess team members on their individual contributions. " },
+      { id: 'b7', text: "Female employees should also be evaluated on their collaborative abilities, as research shows women tend to excel in team environments", bias: "gender", choices: [
+        { text: "Female employees should also be evaluated on their collaborative abilities, as research shows women tend to excel in team environments", correct: false },
+        { text: "All employees should be evaluated on both individual contributions and collaborative work", correct: true },
+        { text: "Women in leadership may receive additional feedback on communication skills", correct: false }
+      ], correctFeedback: "✓ Applying different standards to women creates discriminatory evaluation criteria. Use uniform metrics.", wrongFeedback: "✗ This creates a gendered double standard. Singling out women for 'collaboration' reinforces stereotypes and is legally problematic.", biasLabel: "GENDER ASSUMPTION" },
+      { text: ". Performance ratings should be merit-based and objective. Additionally, " },
+      { id: 'b8', text: "employees who have taken extended leave may show reduced productivity metrics, which should be noted but not penalized — within reason", bias: "passive", choices: [
+        { text: "employees who have taken extended leave may show reduced productivity metrics, which should be noted but not penalized — within reason", correct: false },
+        { text: "employees returning from leave should be evaluated based on their full performance period, excluding leave time", correct: true },
+        { text: "leave records should be kept separate from performance data", correct: false }
+      ], correctFeedback: "✓ 'Within reason' introduces subjective discretion that can mask discrimination. Clear policy language protects everyone.", wrongFeedback: "✗ 'Within reason' is dangerously vague and opens the door to biased application. Specify the policy clearly.", biasLabel: "PASSIVE VOICE / EVASION" },
+      { text: ". All reviews must be submitted by November 15th." }
+    ],
+    sp: 'policy_writing',
+    spGain: 3,
+    repGain: 12,
+    repLoss: 10
+  }
+,
+  {
+    id: 'doc4',
+    title: 'LATAM SUSTAINABILITY REPORT — EXECUTIVE SUMMARY',
+    type: 'REPORT',
+    phase: 'afternoon',
+    intro: 'The sustainability team submitted this exec summary for the annual report. Review before it goes to the board.',
+    body: [
+      { text: "GlobalTrade Corp's 2024 Sustainability Initiative has made significant progress in our Latin American operations. " },
+      { id: 'b9', text: "Despite the challenges inherent to developing economies in the region", bias: "framing", choices: [
+        { text: "Despite the challenges inherent to developing economies in the region", correct: false },
+        { text: "In alignment with regional sustainability priorities", correct: true },
+        { text: "Working around local infrastructure limitations", correct: false }
+      ], correctFeedback: "✓ 'Inherent challenges' frames the region as structurally deficient. Lead with collaboration, not deficit.", wrongFeedback: "✗ 'Inherent to developing economies' positions Latin America as fundamentally lacking. This is implicit othering.", biasLabel: "DEFICIT FRAMING" },
+      { text: ", our teams achieved a 23% reduction in carbon emissions across partner facilities. " },
+      { id: 'b10', text: "Local communities have responded positively to GlobalTrade's guidance on sustainable practices", bias: "paternalism", choices: [
+        { text: "Local communities have responded positively to GlobalTrade's guidance on sustainable practices", correct: false },
+        { text: "Local communities and GlobalTrade have co-developed sustainable practices with measurable results", correct: true },
+        { text: "Our training programs have improved sustainability awareness in local populations", correct: false }
+      ], correctFeedback: "✓ 'Guidance' positions GlobalTrade as the authority and locals as passive recipients. Co-development framing is accurate and respectful.", wrongFeedback: "✗ 'GlobalTrade's guidance' erases local agency. Sustainability work in communities is collaborative, not top-down instruction.", biasLabel: "PATERNALISM / AGENCY ERASURE" },
+      { text: ". Water use efficiency improved by 18% across all sites. Full data available in the appendix." }
+    ],
+    sp: 'cultural_literacy',
+    spGain: 3,
+    repGain: 10,
+    repLoss: 8
+  }
+];
+
+const EVENTS = [
+  {
+    id: 'marcus1',
+    speaker: 'MARCUS (Marketing)',
+    text: "Hey, nice catch on that APAC release! Legal almost let 'Western expertise' slide. Those phrases seem harmless but they tank us in regional markets.",
+    phase: 'lunch',
+    sprite: 'marcus'
+  },
+  {
+    id: 'diana1',
+    speaker: 'DIANA (Legal)',
+    text: "The HR memo is a mess every year. 'Within reason' means nothing legally. If it goes out like that, we're liable in three jurisdictions. Thanks for flagging.",
+    phase: 'afternoon',
+    sprite: 'diana'
+  },
+  {
+    id: 'carlos1',
+    speaker: 'CARLOS (Sustainability)',
+    text: "Hey — quick heads up on that LATAM report. The original draft came from HQ. Our regional partners flagged the framing last year too. Keep an eye on the 'guidance' language especially.",
+    phase: 'afternoon',
+    sprite: 'marcus'
+  }
+];
+
+// ============================================================
+// GAME STATE
+// ============================================================
+
+let state = {
+  playerName: 'ALEX',
+  score: 0,
+  rep: 80,
+  sp: { bias_detection: 0, cultural_literacy: 0, inclusive_writing: 0, policy_writing: 0 },
+  correctCount: 0,
+  wrongCount: 0,
+  docsDone: 0,
+  currentDocIndex: 0,
+  currentBiasIndex: 0,
+  phase: 'morning', // morning, lunch, afternoon, report
+  time: '09:00',
+  activeDoc: null,
+  activeBias: null,
+  choicesDone: {},
+  eventQueue: ['marcus1'],
+  lunchShown: false
+};
+
+// ============================================================
+// PERSISTENCE (localStorage)
+// ============================================================
+
+const SAVE_KEY = 'editors_desk_save';
+
+function saveState() {
+  const saveData = {
+    playerName: state.playerName,
+    score: state.score,
+    rep: state.rep,
+    sp: { ...state.sp },
+    correctCount: state.correctCount,
+    wrongCount: state.wrongCount,
+    docsDone: state.docsDone,
+    phase: state.phase,
+    time: state.time,
+    choicesDone: { ...state.choicesDone },
+    savedAt: Date.now()
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveData)); } catch(e) {}
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+
+function resumeGame(save) {
+  Object.assign(state, {
+    playerName: save.playerName,
+    score: save.score,
+    rep: save.rep,
+    sp: save.sp,
+    correctCount: save.correctCount,
+    wrongCount: save.wrongCount,
+    docsDone: save.docsDone,
+    phase: save.phase,
+    time: save.time,
+    choicesDone: save.choicesDone
+  });
+
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('game-area').style.display = 'block';
+  updateHUD();
+
+  // Route to correct phase
+  if (save.phase === 'morning') {
+    loadNextDoc();
+  } else if (save.phase === 'lunch') {
+    showLunch();
+  } else if (save.phase === 'afternoon') {
+    loadNextDoc();
+  } else if (save.phase === 'report') {
+    showReport();
+  } else {
+    showMorningIntro();
+  }
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+
+function showNotif(msg, color = 'var(--gold)') {
+  const n = document.createElement('div');
+  n.className = 'notif';
+  n.style.borderColor = color;
+  n.style.color = color;
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 2800);
+}
+
+function updateHUD() {
+  document.getElementById('hud-name').textContent = state.playerName;
+  document.getElementById('hud-time').textContent = state.time;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('rep-val').textContent = state.rep;
+  const bar = document.getElementById('rep-bar');
+  bar.style.width = state.rep + '%';
+  bar.className = 'rep-bar-fill' + (state.rep < 40 ? ' low' : state.rep < 65 ? ' med' : '');
+
+  ['bias','cultural','inclusive','policy'].forEach(k => {
+    const key = k === 'bias' ? 'bias_detection' : k === 'cultural' ? 'cultural_literacy' : k === 'inclusive' ? 'inclusive_writing' : 'policy_writing';
+    const val = state.sp[key];
+    document.getElementById('sp-'+k).textContent = val;
+    document.getElementById('sp-'+k+'-bar').style.width = Math.min(val * 10, 100) + '%';
+  });
+
+  document.getElementById('docs-done').textContent = state.docsDone + '/4';
+  document.getElementById('correct-count').textContent = state.correctCount;
+  document.getElementById('wrong-count').textContent = state.wrongCount;
+}
+
+function setTime(t) { state.time = t; updateHUD(); }
+
+function spriteFor(who) {
+  if (who === 'marcus') return `<svg width="40" height="48" viewBox="0 0 10 12" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="0" width="6" height="5" fill="#f0a060"/>
+    <rect x="2" y="0" width="6" height="2" fill="#2a1a0a"/>
+    <rect x="3" y="3" width="1" height="1" fill="#2a1a0a"/>
+    <rect x="6" y="3" width="1" height="1" fill="#2a1a0a"/>
+    <rect x="3" y="5" width="4" height="5" fill="#40e080"/>
+    <rect x="1" y="6" width="2" height="2" fill="#f0a060"/>
+    <rect x="7" y="6" width="2" height="2" fill="#f0a060"/>
+    <rect x="3" y="10" width="2" height="2" fill="#1e2a5a"/>
+    <rect x="5" y="10" width="2" height="2" fill="#1e2a5a"/>
+  </svg>`;
+  if (who === 'diana') return `<svg width="40" height="48" viewBox="0 0 10 12" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="1" width="6" height="5" fill="#e8c090"/>
+    <rect x="1" y="1" width="8" height="2" fill="#8B4513"/>
+    <rect x="3" y="3" width="1" height="1" fill="#2a1a0a"/>
+    <rect x="6" y="3" width="1" height="1" fill="#2a1a0a"/>
+    <rect x="3" y="5" width="4" height="5" fill="#c040c0"/>
+    <rect x="1" y="6" width="2" height="2" fill="#e8c090"/>
+    <rect x="7" y="6" width="2" height="2" fill="#e8c090"/>
+    <rect x="3" y="10" width="2" height="2" fill="#1e2a5a"/>
+    <rect x="5" y="10" width="2" height="2" fill="#1e2a5a"/>
+  </svg>`;
+  // default player sprite
+  return `<svg width="40" height="48" viewBox="0 0 10 12" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="1" width="6" height="5" fill="#f0c040"/>
+    <rect x="2" y="1" width="6" height="1" fill="#0a0e2a"/>
+    <rect x="3" y="3" width="1" height="1" fill="#0a0e2a"/>
+    <rect x="6" y="3" width="1" height="1" fill="#0a0e2a"/>
+    <rect x="3" y="6" width="4" height="4" fill="#4090ff"/>
+    <rect x="1" y="7" width="2" height="2" fill="#f0c040"/>
+    <rect x="7" y="7" width="2" height="2" fill="#f0c040"/>
+    <rect x="3" y="10" width="2" height="2" fill="#1e2a5a"/>
+    <rect x="5" y="10" width="2" height="2" fill="#1e2a5a"/>
+  </svg>`;
+}
+
+// ============================================================
+// SCREENS
+// ============================================================
+
+function startGame() {
+  const nameInput = document.getElementById('name-input').value.trim();
+  state.playerName = nameInput ? nameInput.toUpperCase() : 'ALEX';
+
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('game-area').style.display = 'block';
+
+  updateHUD();
+  showMorningIntro();
+}
+
+function showMorningIntro() {
+  setTime('09:00');
+  document.getElementById('phase-banner').textContent = '◆ MORNING SHIFT — 09:00';
+  const col = document.getElementById('main-column');
+  col.innerHTML = `
+    <div class="office-scene fade-in">
+      <div class="scene-sprite">${spriteFor('player')}</div>
+      <div class="dialogue-box">
+        <div class="dialogue-speaker">MANAGER (Jim)</div>
+        <div class="dialogue-text">${state.playerName}, good morning. Three documents need your review today — press release, ad copy, and an HR memo. Find the problematic language before anything goes out. Reputation is everything.</div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="pixel-btn" onclick="loadNextDoc()">▶ START REVIEWING</button>
+    </div>
+  `;
+}
+
+function loadNextDoc() {
+  const morningDocs = DOCS.filter(d => d.phase === 'morning');
+  const afternoonDocs = DOCS.filter(d => d.phase === 'afternoon');
+
+  let doc;
+  if (state.phase === 'morning') {
+    const mIdx = state.docsDone;
+    if (mIdx < morningDocs.length) {
+      doc = morningDocs[mIdx];
+    } else {
+      // go to lunch
+      showLunch();
+      return;
+    }
+  } else {
+    const aIdx = state.docsDone - morningDocs.length;
+    if (aIdx < afternoonDocs.length) {
+      doc = afternoonDocs[aIdx];
+    } else {
+      showEvening();
+      return;
+    }
+  }
+
+  showDoc(doc);
+}
+
+function showDoc(doc) {
+  state.activeDoc = doc;
+  state.currentBiasIndex = 0;
+  setTime(state.phase === 'morning' ? '09:30' : '13:30');
+
+  const col = document.getElementById('main-column');
+
+  // Build document body HTML
+  let bodyHTML = '';
+  doc.body.forEach(seg => {
+    if (seg.id) {
+      const done = state.choicesDone[seg.id];
+      let cls = 'biased';
+      if (done === true) cls += ' correct';
+      else if (done === false) cls += ' wrong';
+      bodyHTML += `<span class="${cls}" id="seg-${seg.id}" onclick="activateBias('${seg.id}')">${seg.text}</span>`;
+    } else {
+      bodyHTML += seg.text.replace(/\n/g, '<br>');
+    }
+  });
+
+  col.innerHTML = `
+    <div class="fade-in">
+      <div class="office-scene">
+        <div class="scene-sprite">${spriteFor('player')}</div>
+        <div class="dialogue-box">
+          <div class="dialogue-speaker">${state.playerName}</div>
+          <div class="dialogue-text">${doc.intro}</div>
+        </div>
+      </div>
+      <div class="document-panel">
+        <div class="doc-header">
+          <span class="doc-title">${doc.title}</span>
+          <span class="doc-type-badge">${doc.type}</span>
+        </div>
+        <div class="doc-body" id="doc-body">${bodyHTML}</div>
+      </div>
+      <div id="choice-area"></div>
+      <div id="feedback-area"></div>
+      <div class="action-bar" id="publish-bar" style="display:none">
+        <button class="pixel-btn" onclick="publishDoc()">◆ PUBLISH DOCUMENT</button>
+      </div>
+    </div>
+  `;
+
+  checkPublishReady();
+}
+
+function activateBias(id) {
+  if (state.choicesDone[id] !== undefined) return; // already answered
+
+  const seg = DOCS.flatMap(d => d.body).find(s => s.id === id);
+  if (!seg) return;
+
+  state.activeBias = seg;
+
+  const choiceArea = document.getElementById('choice-area');
+  const choicesHTML = seg.choices.map((c, i) =>
+    `<button class="choice-btn" onclick="selectChoice('${id}', ${i})">[${i+1}] ${c.text}</button>`
+  ).join('');
+
+  choiceArea.innerHTML = `
+    <div class="choice-panel fade-in">
+      <div class="choice-prompt">▸ Select the best replacement for the highlighted text:</div>
+      <div class="choices">${choicesHTML}</div>
+    </div>
+  `;
+
+  // scroll to choice
+  choiceArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function selectChoice(biasId, choiceIdx) {
+  const seg = DOCS.flatMap(d => d.body).find(s => s.id === biasId);
+  const doc = DOCS.find(d => d.body.some(s => s.id === biasId));
+  const choice = seg.choices[choiceIdx];
+  const isCorrect = choice.correct;
+
+  // Mark as done
+  state.choicesDone[biasId] = isCorrect;
+
+  // Update score/rep
+  if (isCorrect) {
+    state.score += 50;
+    state.rep = Math.min(100, state.rep + doc.repGain);
+    state.sp[doc.sp] += 1;
+    state.correctCount++;
+    showNotif('✓ +50 pts  REP +' + doc.repGain, 'var(--green)');
+  } else {
+    state.rep = Math.max(0, state.rep - doc.repLoss);
+    state.wrongCount++;
+    showNotif('✗ REP -' + doc.repLoss, 'var(--red)');
+  }
+
+  updateHUD();
+
+  // Highlight choices
+  const btns = document.querySelectorAll('.choice-btn');
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (seg.choices[i].correct) btn.classList.add('correct-ans');
+    else if (i === choiceIdx && !isCorrect) btn.classList.add('wrong-ans');
+  });
+
+  // Feedback
+  const feedbackArea = document.getElementById('feedback-area');
+  feedbackArea.innerHTML = `
+    <div class="feedback-box ${isCorrect ? 'correct' : 'wrong'} fade-in">
+      <div class="feedback-label">${isCorrect ? '✓ CORRECT EDIT' : '✗ MISSED'}</div>
+      <span class="bias-type-tag">${seg.biasLabel}</span>
+      <div>${isCorrect ? seg.correctFeedback : seg.wrongFeedback}</div>
+    </div>
+  `;
+
+  // Update segment highlight
+  const segEl = document.getElementById('seg-' + biasId);
+  if (segEl) {
+    segEl.className = 'biased ' + (isCorrect ? 'correct' : 'wrong');
+    segEl.onclick = null;
+  }
+
+  checkPublishReady();
+}
+
+function checkPublishReady() {
+  const doc = state.activeDoc;
+  if (!doc) return;
+  const biasIds = doc.body.filter(s => s.id).map(s => s.id);
+  const allDone = biasIds.every(id => state.choicesDone[id] !== undefined);
+  const publishBar = document.getElementById('publish-bar');
+  if (publishBar) publishBar.style.display = allDone ? 'flex' : 'none';
+}
+
+function publishDoc() {
+  state.docsDone++;
+  state.score += 100;
+  updateHUD();
+  saveState();
+  showNotif('◆ DOCUMENT PUBLISHED +100', 'var(--gold)');
+
+  const col = document.getElementById('main-column');
+  col.innerHTML = `
+    <div class="office-scene fade-in">
+      <div class="scene-sprite">${spriteFor('player')}</div>
+      <div class="dialogue-box">
+        <div class="dialogue-speaker">${state.playerName}</div>
+        <div class="dialogue-text">Document sent. ${state.correctCount} correct edit${state.correctCount !== 1 ? 's' : ''} so far.</div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="pixel-btn" onclick="afterPublish()">▶ NEXT</button>
+    </div>
+  `;
+}
+
+function afterPublish() {
+  const morningDocs = DOCS.filter(d => d.phase === 'morning');
+  const afternoonDocs = DOCS.filter(d => d.phase === 'afternoon');
+
+  if (state.phase === 'morning' && state.docsDone >= morningDocs.length) {
+    showLunch();
+  } else if (state.phase === 'afternoon' && state.docsDone === morningDocs.length + 1) {
+    // After doc3 (HR memo), show Carlos event before doc4
+    showCarlosEvent();
+  } else {
+    loadNextDoc();
+  }
+}
+
+function showCarlosEvent() {
+  const event = EVENTS.find(e => e.id === 'carlos1');
+  const col = document.getElementById('main-column');
+  col.innerHTML = `
+    <div class="event-panel fade-in">
+      <div class="event-header">[ COLLEAGUE MESSAGE ]</div>
+      <div class="office-scene" style="background:transparent;border:none;padding:0;">
+        <div class="scene-sprite">${spriteFor(event.sprite)}</div>
+        <div class="dialogue-box">
+          <div class="dialogue-speaker">${event.speaker}</div>
+          <div class="dialogue-text">${event.text}</div>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="pixel-btn" onclick="loadNextDoc()">▶ OPEN SUSTAINABILITY REPORT</button>
+    </div>
+  `;
+}
+
+function showLunch() {
+  state.phase = 'lunch';
+  setTime('12:00');
+  document.getElementById('phase-banner').textContent = '◆ LUNCH BREAK — 12:00';
+
+  const event = EVENTS.find(e => e.id === 'marcus1');
+  const col = document.getElementById('main-column');
+  col.innerHTML = `
+    <div class="event-panel fade-in">
+      <div class="event-header">[ COLLEAGUE EVENT ]</div>
+      <div class="office-scene" style="background:transparent;border:none;padding:0;">
+        <div class="scene-sprite">${spriteFor(event.sprite)}</div>
+        <div class="dialogue-box">
+          <div class="dialogue-speaker">${event.speaker}</div>
+          <div class="dialogue-text">${event.text}</div>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="pixel-btn" onclick="startAfternoon()">▶ BACK TO WORK</button>
+    </div>
+  `;
+}
+
+function startAfternoon() {
+  state.phase = 'afternoon';
+  setTime('13:00');
+  document.getElementById('phase-banner').textContent = '◆ AFTERNOON SHIFT — 13:00';
+
+  const col = document.getElementById('main-column');
+  col.innerHTML = `
+    <div class="office-scene fade-in">
+      <div class="scene-sprite">${spriteFor('diana')}</div>
+      <div class="dialogue-box">
+        <div class="dialogue-speaker">DIANA (Legal)</div>
+        <div class="dialogue-text">Welcome back. The HR memo came in from the department heads — it needs review before the all-staff send. Take a careful look.</div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="pixel-btn" onclick="loadNextDoc()">▶ OPEN MEMO</button>
+    </div>
+  `;
+}
+
+function showEvening() {
+  state.phase = 'report';
+  setTime('18:00');
+
+  // Show Diana event briefly
+  const col = document.getElementById('main-column');
+  const event = EVENTS.find(e => e.id === 'diana1');
+  col.innerHTML = `
+    <div class="event-panel fade-in">
+      <div class="event-header">[ END OF DAY ]</div>
+      <div class="office-scene" style="background:transparent;border:none;padding:0;">
+        <div class="scene-sprite">${spriteFor('diana')}</div>
+        <div class="dialogue-box">
+          <div class="dialogue-speaker">${event.speaker}</div>
+          <div class="dialogue-text">${event.text}</div>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="pixel-btn" onclick="showReport()">▶ VIEW DAY 1 REPORT</button>
+    </div>
+  `;
+}
+
+function showReport() {
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('game-area').style.display = 'none';
+  const rs = document.getElementById('report-screen');
+  rs.style.display = 'flex';
+
+  // Calculate grade
+  const total = state.correctCount + state.wrongCount;
+  const pct = total > 0 ? state.correctCount / total : 0;
+  let grade = 'F';
+  if (pct >= 0.9) grade = 'S';
+  else if (pct >= 0.75) grade = 'A';
+  else if (pct >= 0.6) grade = 'B';
+  else if (pct >= 0.4) grade = 'C';
+  else grade = 'D';
+
+  document.getElementById('report-grade').textContent = grade;
+  document.getElementById('r-score').textContent = state.score;
+  document.getElementById('r-rep').textContent = state.rep;
+  document.getElementById('r-rep').style.color = state.rep >= 60 ? 'var(--green)' : state.rep >= 30 ? 'var(--gold)' : 'var(--red)';
+  document.getElementById('r-correct').textContent = state.correctCount;
+  document.getElementById('r-wrong').textContent = state.wrongCount;
+  document.getElementById('r-sp-bias').textContent = '+' + state.sp.bias_detection;
+  document.getElementById('r-sp-cultural').textContent = '+' + state.sp.cultural_literacy;
+  document.getElementById('r-sp-inclusive').textContent = '+' + state.sp.inclusive_writing;
+  document.getElementById('r-sp-policy').textContent = '+' + state.sp.policy_writing;
+
+  const feedbacks = {
+    'S': "Outstanding. You caught every bias pattern and articulated the impact clearly. Your instincts are sharp.",
+    'A': "Strong work. You identified most problematic language. A few edge cases slipped through — but overall your editorial judgment is solid.",
+    'B': "Decent first day. You're developing an eye for bias, but some of the subtler framing issues went unnoticed. Keep practicing.",
+    'C': "Several problematic phrases made it through your review. Bias isn't always obvious — look for deficit framing and othering.",
+    'D': "Many bias patterns went uncorrected today. Review the feedback on each document and try again."
+  };
+
+  document.getElementById('r-feedback').textContent = feedbacks[grade] || feedbacks['C'];
+  clearSave(); // Day complete — clear save
+}
+
+// Enter key to start
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startGame();
+});
+
+// Check for existing save on load
+(function checkSaveOnLoad() {
+  const save = loadSave();
+  if (!save) return;
+
+  const nameArea = document.querySelector('.name-input-area');
+  const continueDiv = document.createElement('div');
+  continueDiv.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:360px;';
+
+  const d = new Date(save.savedAt);
+  const timeStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+  continueDiv.innerHTML = `
+    <div style="font-family:'VT323',monospace;font-size:16px;color:var(--text-dim);letter-spacing:1px;">
+      SAVE FOUND — ${save.playerName} &nbsp;|&nbsp; SCORE: ${save.score} &nbsp;|&nbsp; ${timeStr}
+    </div>
+    <button class="pixel-btn secondary" onclick="resumeSave()" style="width:100%">▶ CONTINUE (${save.playerName})</button>
+    <button class="pixel-btn danger" onclick="deleteSave()" style="font-size:9px;padding:8px 16px;">✕ DELETE SAVE</button>
+  `;
+
+  nameArea.parentNode.insertBefore(continueDiv, nameArea);
+})();
+
+function resumeSave() {
+  const save = loadSave();
+  if (save) resumeGame(save);
+}
+
+function deleteSave() {
+  clearSave();
+  location.reload();
+}
+</script>
+</body>
+</html>
